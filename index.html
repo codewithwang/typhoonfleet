@@ -84,6 +84,11 @@
   .track{display:grid;grid-template-columns:128px 1fr;align-items:center;gap:14px;margin-bottom:9px}
   .track .name{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .track.sel .name{color:var(--gold)}
+  /* the origin track — everything else on the board runs through this one */
+  .track.origin{padding-bottom:13px;border-bottom:1px solid var(--line-gold);margin-bottom:16px}
+  .track.origin .name{color:var(--ink);font-weight:600}
+  .origin-tag{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold);margin-left:7px;font-weight:400}
+  .derived-tracks{border-left:2px solid var(--line-gold);margin-left:5px;padding-left:16px}
   .steps{display:grid;grid-template-columns:repeat(16,1fr);gap:5px}
   .cell{height:14px;border-radius:3px;background:rgba(10,35,66,.07);transition:background .08s,box-shadow .08s,transform .08s}
   .cell.on{background:rgba(181,98,15,.32)}
@@ -270,7 +275,7 @@
     <div class="show-intro">
       <div class="eye">The Roster</div>
       <h2>Each one does a real job.</h2>
-      <p>No monolith pretending to do everything. Four specialists running today, each in its own domain, with room on the board for more. Security sets the bar: a ship safe enough to attack systems is the standard the rest are held to.</p>
+      <p>No monolith pretending to do everything. Every ship on this board runs through one origin, LifeOS, the second brain that already knows the shape of your life before anything else touches it. Security sets the bar for what boards next: a ship safe enough to attack systems is the standard the rest are held to.</p>
     </div>
     <div class="voices" id="voices"></div>
   </div>
@@ -321,43 +326,56 @@
 (function(){
   // ----- roster (only what actually runs) -----
   const AGENTS = [
-    {id:'life', name:'LifeOS', domain:'Life', status:'live', model:'any', autonomy:75,
-     what:'Captures anything you throw at it, routes it by understanding, and keeps the six dimensions of your life in view. Journal, tasks, recall, the morning card. Your life’s operating system.',
+    {id:'life', name:'LifeOS', domain:'Life', status:'live', model:'any', autonomy:75, origin:true,
+     what:'Captures anything you throw at it, routes it by understanding, and keeps the six dimensions of your life in view. Journal, tasks, recall, the morning card. Every other ship on this board runs through it.',
      pat:[1,0,1,0,1,0,1,1,1,0,1,0,1,0,1,1]},
     {id:'fit',  name:'Fitness', domain:'Body', status:'live', model:'any', autonomy:55,
-     what:'Logs every workout, reconciles the numbers, and reads recovery and readiness back to you each morning. The agent that knows your body.',
+     what:'Logs every workout, reconciles the numbers, reads a meal photo back as macros and supplements, and reads recovery and readiness to you each morning. The agent that knows your body.',
      pat:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0]},
     {id:'ed',   name:'Wang Report Editor', domain:'Newsroom', status:'live', model:'any', autonomy:60,
      what:'Runs a newsroom of correspondents, each with a fixed voice, drafting and editing columns to publication standard, on schedule. The agent that runs a publication.',
      pat:[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0]},
-    {id:'red',  name:'The Red-Teamer', domain:'Security', status:'live', model:'any', autonomy:70, flag:true,
+    {id:'red',  name:'The Red-Teamer', domain:'Security', status:'designed', model:'any', autonomy:70, flag:true,
      what:'Automated, scoped offensive testing. Maps attack paths, probes controls, and reports the way an auditor will accept. Security-first, so every agent on the board meets the bar.',
      pat:[1,0,0,0,0,0,0,1,1,0,0,0,0,0,1,0]},
+    {id:'photo', name:'Photos', domain:'Life', status:'designed', model:'any', autonomy:35,
+     what:'Reads a day of photos, writes down what they were, and turns the ones worth keeping into a page of the journal. Built to be shared, not just kept.',
+     pat:[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0]},
+    {id:'dock', name:'On the Dock', domain:'Life', status:'planned', model:'any', autonomy:20,
+     what:'A new ship is being fitted out. Not ready to launch yet.',
+     pat:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0]},
   ];
-  const EMPTY_SLOTS = 4;       // pads left open on the board
-  const EMPTY_TRACKS = 2;      // empty sequencer lanes
+  const EMPTY_SLOTS = 2;       // pads left open on the board
+  const EMPTY_TRACKS = 0;      // empty sequencer lanes
   const STATUS_LABEL = {live:'Live', designed:'Designed', planned:'Planned'};
 
   // ----- sequencer rows -----
+  // LifeOS renders as the origin track, full width, above a divider. Every
+  // other track (real or empty) is visually indented beneath it, joined by
+  // a single connecting rule — the board's hierarchy, not just its order.
   const seqRows = document.getElementById('seqRows');
-  AGENTS.forEach(a=>{
+  function buildTrackRow(a, opts){
+    opts = opts || {};
     const row = document.createElement('div');
-    row.className='track'; row.dataset.id=a.id;
-    const nm = document.createElement('div'); nm.className='name'; nm.textContent=a.name;
+    row.className='track'+(opts.origin?' origin':'')+(opts.empty?' empty':'');
+    if(a) row.dataset.id=a.id;
+    const nm = document.createElement('div'); nm.className='name';
+    if(opts.empty){ nm.textContent='open lane'; }
+    else { nm.textContent=a.name; if(opts.origin){ const tag=document.createElement('span'); tag.className='origin-tag'; tag.textContent='· origin'; nm.appendChild(tag); } }
     const steps = document.createElement('div'); steps.className='steps';
-    a.pat.forEach(on=>{
-      const c=document.createElement('div'); c.className='cell'+(on?' on':''); steps.appendChild(c);
-    });
-    row.appendChild(nm); row.appendChild(steps); seqRows.appendChild(row);
-  });
-  // empty lanes — room to grow
-  for(let e=0;e<EMPTY_TRACKS;e++){
-    const row=document.createElement('div'); row.className='track empty';
-    const nm=document.createElement('div'); nm.className='name'; nm.textContent='open lane';
-    const steps=document.createElement('div'); steps.className='steps';
-    for(let i=0;i<16;i++){const c=document.createElement('div');c.className='cell';steps.appendChild(c);}
-    row.appendChild(nm); row.appendChild(steps); seqRows.appendChild(row);
+    const pattern = opts.empty ? Array(16).fill(0) : a.pat;
+    pattern.forEach(on=>{ const c=document.createElement('div'); c.className='cell'+(on?' on':''); steps.appendChild(c); });
+    row.appendChild(nm); row.appendChild(steps);
+    return row;
   }
+  const originAgent = AGENTS.find(a=>a.origin);
+  const restAgents = AGENTS.filter(a=>!a.origin);
+  if(originAgent) seqRows.appendChild(buildTrackRow(originAgent, {origin:true}));
+  const derived = document.createElement('div'); derived.className='derived-tracks';
+  restAgents.forEach(a=> derived.appendChild(buildTrackRow(a)));
+  // empty lanes — room to grow — join the derived group, not the origin
+  for(let e=0;e<EMPTY_TRACKS;e++){ derived.appendChild(buildTrackRow(null, {empty:true})); }
+  seqRows.appendChild(derived);
   const allRows = [...seqRows.querySelectorAll('.track:not(.empty)')];
   const playRows = [...seqRows.querySelectorAll('.track')];
 
@@ -378,7 +396,7 @@
   const padGrid = document.getElementById('padGrid');
   AGENTS.forEach((a,idx)=>{
     const p=document.createElement('div'); p.className='pad'; p.dataset.id=a.id;
-    p.innerHTML = `<span class="pdot ${a.status}"></span>${a.flag?'<span class="flag">Flag</span>':''}<span class="bank-i">${a.domain}</span><span class="pn">${a.name}</span>`;
+    p.innerHTML = `<span class="pdot ${a.status}"></span>${a.flag?'<span class="flag">Flag</span>':''}${a.origin?'<span class="flag">Origin</span>':''}<span class="bank-i">${a.domain}</span><span class="pn">${a.name}</span>`;
     p.addEventListener('click',()=>select(a.id,true));
     padGrid.appendChild(p);
   });
@@ -422,7 +440,7 @@
   AGENTS.forEach(a=>{
     const v=document.createElement('div'); v.className='voice';
     v.innerHTML = `
-      <div class="vbank">${a.domain}${a.flag?' · Flagship':''}</div>
+      <div class="vbank">${a.domain}${a.flag?' · Flagship':''}${a.origin?' · Origin':''}</div>
       <div class="vmain">
         <h3>${a.name} <span class="sd ${a.status}"></span></h3>
         <p>${a.what}</p>

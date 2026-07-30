@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typhoon Fleet — A machine for agents</title>
+<meta name="description" content="An instrument for agents. A roster of specialists, each a voice in the machine. Press a pad and see what it can do.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --typhoon:#0A2342;
+    --signal:#E63946;
+    --gold:#B5620F;          /* deep amber, text-safe + fill on white */
+    --gold-bright:#F4A261;
+    --base:#FFFFFF;
+    --ink:#0A2342;           /* Typhoon Blue as near-black ink */
+    --muted:#566072;
+    --faint:#9AA3B2;
+    --line:rgba(10,35,66,.12);
+    --line-gold:rgba(181,98,15,.32);
+    --panel:#F7F5F1;
+    --green:#18A558;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--base);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 32px}
+
+  /* ---- nav ---- */
+  nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(20px);background:rgba(255,255,255,.72);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:66px}
+  .word{font-family:'Fraunces',serif;font-weight:600;font-size:19px;letter-spacing:.2px}
+  .word .a{color:var(--gold)}
+  .navlinks{display:flex;gap:34px;font-size:13.5px;color:var(--muted)}
+  .navlinks a:hover{color:var(--ink)}
+  .navtag{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--faint);letter-spacing:1px}
+
+  /* ---- hero ---- */
+  header{padding:150px 0 90px;text-align:center;position:relative}
+  .kicker{font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:3.5px;text-transform:uppercase;color:var(--gold);margin-bottom:34px}
+  h1{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(46px,8.2vw,96px);line-height:1;letter-spacing:-2px;margin-bottom:34px}
+  h1 .it{font-style:italic;color:var(--gold)}
+  .sub{font-size:clamp(17px,2.1vw,20px);color:var(--muted);max-width:560px;margin:0 auto;font-weight:400}
+  .scrollcue{margin-top:64px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.5px;color:var(--faint);text-transform:uppercase}
+  .scrollcue::after{content:"";display:block;width:1px;height:38px;margin:16px auto 0;background:linear-gradient(var(--line-gold),transparent)}
+
+  /* ---- the machine ---- */
+  .machine-sec{padding:40px 0 110px}
+  .machine{
+    border:1px solid var(--line);border-radius:20px;
+    background:linear-gradient(180deg,#FBFAF8,#F4F2ED);
+    box-shadow:0 30px 80px rgba(10,35,66,.10), inset 0 1px 0 #fff;
+    overflow:hidden;
+  }
+  /* transport / LCD — this is the bridge */
+  .transport{
+    display:flex;align-items:center;gap:22px;flex-wrap:wrap;
+    padding:18px 26px;border-bottom:1px solid var(--line);
+    background:rgba(10,35,66,.04);
+    font-family:'JetBrains Mono',monospace;font-size:11.5px;letter-spacing:.5px;color:var(--muted);
+  }
+  .transport .play{display:flex;align-items:center;gap:9px;color:var(--ink)}
+  .transport .play .tri{width:0;height:0;border-left:11px solid var(--green);border-top:7px solid transparent;border-bottom:7px solid transparent}
+  .transport .lcd{color:var(--gold)}
+  .transport .lab{color:var(--faint);text-transform:uppercase;letter-spacing:1.5px}
+  .transport .right{margin-left:auto;display:flex;gap:20px;flex-wrap:wrap}
+  .transport b{color:var(--ink);font-weight:500}
+
+  .machine-body{display:grid;grid-template-columns:1fr;gap:0}
+
+  /* sequencer */
+  .seq{padding:24px 26px 8px}
+  .seqhead{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--faint);margin-bottom:16px}
+  .track{display:grid;grid-template-columns:128px 1fr;align-items:center;gap:14px;margin-bottom:9px}
+  .track .name{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .track.sel .name{color:var(--gold)}
+  .steps{display:grid;grid-template-columns:repeat(16,1fr);gap:5px}
+  .cell{height:14px;border-radius:3px;background:rgba(10,35,66,.07);transition:background .08s,box-shadow .08s,transform .08s}
+  .cell.on{background:rgba(181,98,15,.32)}
+  .cell.now{transform:scaleY(1.18)}
+  .cell.on.now{background:var(--gold);box-shadow:0 0 12px rgba(181,98,15,.45)}
+  .cell.now:not(.on){background:rgba(10,35,66,.20)}
+
+  /* pad bank + detail */
+  .lower{display:grid;grid-template-columns:1.15fr 1fr;gap:0;border-top:1px solid var(--line)}
+  .pads{padding:26px;border-right:1px solid var(--line)}
+  .padhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:18px}
+  .padhead .t{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--faint)}
+  .padgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .pad{
+    aspect-ratio:1;border-radius:12px;border:1px solid var(--line);
+    background:#FFFFFF;
+    display:flex;flex-direction:column;justify-content:flex-end;padding:11px;cursor:pointer;
+    transition:transform .12s,border-color .15s,box-shadow .15s,background .15s;position:relative;
+  }
+  .pad:hover{transform:translateY(-2px);border-color:var(--line-gold);box-shadow:0 8px 22px rgba(10,35,66,.08)}
+  .pad.active{border-color:var(--gold);background:linear-gradient(180deg,rgba(244,162,97,.18),rgba(244,162,97,.05));box-shadow:0 0 0 1px rgba(181,98,15,.25),0 14px 30px rgba(10,35,66,.12)}
+  .pad.hit{transform:translateY(1px) scale(.97)}
+  .pad .pn{font-size:11.5px;font-weight:500;color:var(--ink);line-height:1.25}
+  .pad .pdot{position:absolute;top:11px;left:11px;width:7px;height:7px;border-radius:50%;background:var(--faint)}
+  .pad .pdot.live{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .pad .pdot.designed{background:var(--gold);box-shadow:0 0 8px var(--gold)}
+  .pad .flag{position:absolute;top:9px;right:10px;font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--gold);text-transform:uppercase}
+  .pad .bank-i{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1px;color:var(--faint);text-transform:uppercase;margin-bottom:4px}
+  /* empty slots — room to grow */
+  .pad.empty{cursor:default;border-style:dashed;border-color:var(--line);background:none;align-items:center;justify-content:center}
+  .pad.empty:hover{transform:none;border-color:var(--line)}
+  .pad.empty .slot{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--faint);opacity:.6}
+  .track.empty .name{color:var(--faint);opacity:.45}
+  .track.empty .cell{opacity:.3}
+
+  /* detail readout */
+  .detail{padding:30px 30px 26px;display:flex;flex-direction:column;min-height:280px}
+  .detail .bank{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:10px}
+  .detail h3{font-family:'Fraunces',serif;font-weight:500;font-size:30px;letter-spacing:-.5px;margin-bottom:6px;display:flex;align-items:center;gap:11px}
+  .detail h3 .sd{width:9px;height:9px;border-radius:50%;background:var(--faint)}
+  .detail h3 .sd.live{background:var(--green);box-shadow:0 0 10px var(--green)}
+  .detail h3 .sd.designed{background:var(--gold);box-shadow:0 0 10px var(--gold)}
+  .detail .what{font-size:15px;color:var(--muted);margin-bottom:auto;max-width:380px}
+  .detail .specs{margin-top:26px;display:flex;flex-direction:column;gap:0}
+  .srow{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-top:1px solid var(--line);font-size:12.5px}
+  .srow .k{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--faint)}
+  .srow .v{color:var(--ink)}
+  /* the fader = autonomy, not volume */
+  .fader{display:flex;align-items:center;gap:13px;min-width:170px}
+  .fader .ends{font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:1px;text-transform:uppercase;color:var(--faint)}
+  .ftrack{flex:1;height:4px;background:rgba(10,35,66,.14);border-radius:3px;position:relative}
+  .fknob{position:absolute;top:50%;transform:translate(-50%,-50%);width:13px;height:13px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(181,98,15,.4);transition:left .45s cubic-bezier(.2,.8,.2,1)}
+
+  /* ---- showcase: agents one at a time ---- */
+  .showcase{padding:30px 0 40px}
+  .show-intro{text-align:center;max-width:600px;margin:0 auto 30px}
+  .show-intro .eye{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:18px}
+  .show-intro h2{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(30px,4.6vw,46px);letter-spacing:-1px;line-height:1.08;margin-bottom:18px}
+  .show-intro p{color:var(--muted);font-size:17px}
+  .voices{margin-top:8px}
+  .voice{
+    display:grid;grid-template-columns:160px 1fr auto;align-items:center;gap:30px;
+    padding:30px 28px;border-bottom:1px solid var(--line);transition:background .2s;
+  }
+  .voice:first-child{border-top:1px solid var(--line)}
+  .voice:hover{background:rgba(10,35,66,.025)}
+  .voice .vbank{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--faint)}
+  .voice .vmain h3{font-family:'Fraunces',serif;font-weight:500;font-size:23px;letter-spacing:-.3px;margin-bottom:5px;display:flex;align-items:center;gap:10px}
+  .voice .vmain h3 .sd{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+  .voice .vmain h3 .sd.live{background:var(--green);box-shadow:0 0 9px var(--green)}
+  .voice .vmain h3 .sd.designed{background:var(--gold);box-shadow:0 0 9px var(--gold)}
+  .voice .vmain p{color:var(--muted);font-size:14.5px;max-width:560px}
+  .voice .vstat{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+  .voice .vstat.live{color:var(--green)}
+
+  /* ---- principle (quiet) ---- */
+  .principle{padding:120px 0;text-align:center;border-top:1px solid var(--line)}
+  .principle .eye{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:24px}
+  .principle h2{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(28px,4.4vw,44px);letter-spacing:-1px;line-height:1.18;max-width:760px;margin:0 auto}
+  .principle h2 .g{color:var(--gold);font-style:italic}
+  .principle .three{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-top:64px;background:var(--line);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .principle .three .c{background:var(--base);padding:38px 28px;text-align:left}
+  .principle .three .c .ci{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+  .principle .three .c h4{font-family:'Fraunces',serif;font-weight:500;font-size:19px;margin-bottom:9px}
+  .principle .three .c p{color:var(--muted);font-size:13.5px}
+
+  /* ---- closer (no sell) ---- */
+  .closer{padding:130px 0;text-align:center}
+  .closer h2{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(32px,5.4vw,60px);letter-spacing:-1.5px;line-height:1.04;max-width:740px;margin:0 auto 22px}
+  .closer h2 .it{font-style:italic;color:var(--gold)}
+  .closer .note{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:1px;color:var(--muted)}
+
+  footer{border-top:1px solid var(--line);padding:40px 0;color:var(--faint);font-size:12.5px}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;align-items:center}
+  .mono{font-family:'JetBrains Mono',monospace;letter-spacing:.5px}
+
+  @media(prefers-reduced-motion:reduce){.cell{transition:none}}
+  @media(max-width:880px){
+    .lower{grid-template-columns:1fr}
+    .pads{border-right:0;border-bottom:1px solid var(--line)}
+    .track{grid-template-columns:96px 1fr}
+    .principle .three{grid-template-columns:1fr}
+    .voice{grid-template-columns:1fr;gap:10px}
+    .voice .vstat{display:none}
+  }
+  @media(max-width:680px){
+    .navlinks{display:none}
+    header{padding:104px 0 60px}
+    .padgrid{grid-template-columns:repeat(3,1fr)}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <div class="word">Typhoon<span class="a">Fleet</span></div>
+    <div class="navlinks">
+      <a href="#machine">The Machine</a>
+      <a href="#agents">The Agents</a>
+      <a href="#how">How It Works</a>
+    </div>
+    <div class="navtag">Hong Kong</div>
+  </div>
+</nav>
+
+<header>
+  <div class="wrap">
+    <div class="kicker">Typhoon Fleet</div>
+    <h1>Press play on<br>the <span class="it">possible</span>.</h1>
+    <p class="sub">An instrument for agents. A roster of specialists, each a voice in the machine. This is what they can do.</p>
+    <div class="scrollcue">Play the machine</div>
+  </div>
+</header>
+
+<!-- ============ THE MACHINE ============ -->
+<section id="machine" class="machine-sec">
+  <div class="wrap">
+    <div class="machine">
+
+      <!-- transport = the bridge / Conductor -->
+      <div class="transport">
+        <span class="play"><span class="tri"></span> Running</span>
+        <span class="lab">Bridge</span><span class="lcd">routing · stateful · logged</span>
+        <span class="right">
+          <span><span class="lab">Tempo</span> <b>live</b></span>
+          <span><span class="lab">Aboard</span> <b>4</b></span>
+          <span><span class="lab">Slots</span> <b>open</b></span>
+        </span>
+      </div>
+
+      <div class="machine-body">
+
+        <!-- sequencer: the fleet playing together -->
+        <div class="seq">
+          <div class="seqhead">// the fleet, in a loop</div>
+          <div id="seqRows"></div>
+        </div>
+
+        <div class="lower">
+          <!-- pad bank -->
+          <div class="pads">
+            <div class="padhead">
+              <span class="t">// pads · tap an agent</span>
+              <span class="t">16 steps</span>
+            </div>
+            <div class="padgrid" id="padGrid"></div>
+          </div>
+
+          <!-- detail readout -->
+          <div class="detail" id="detail">
+            <!-- populated by JS -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ THE AGENTS (showcase) ============ -->
+<section id="agents" class="showcase">
+  <div class="wrap">
+    <div class="show-intro">
+      <div class="eye">The Roster</div>
+      <h2>Each one does a real job.</h2>
+      <p>No monolith pretending to do everything. Four specialists running today, each in its own domain, with room on the board for more. Security sets the bar: a ship safe enough to attack systems is the standard the rest are held to.</p>
+    </div>
+    <div class="voices" id="voices"></div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS (quiet principle) ============ -->
+<section id="how" class="principle">
+  <div class="wrap">
+    <div class="eye">How It Works</div>
+    <h2>One machine reads what you give it, routes it to the right ship, and <span class="g">writes down every move.</span></h2>
+    <div class="three">
+      <div class="c">
+        <div class="ci">The fader</div>
+        <h4>Autonomy, not volume</h4>
+        <p>Every agent has a fader from advisory to acting. The control you actually care about with agents is the one on the front of the machine, not buried in a settings page.</p>
+      </div>
+      <div class="c">
+        <div class="ci">The brains</div>
+        <h4>Bring your own model</h4>
+        <p>Route each channel to the model you trust. Frontier, local, or air-gapped. The fleet is the instrument; the brains are your call.</p>
+      </div>
+      <div class="c">
+        <div class="ci">The log</div>
+        <h4>Every action recorded</h4>
+        <p>One audit trail across the whole fleet. You can always see what was done, why, and by which ship. The receipt is the point.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CLOSER ============ -->
+<div class="closer">
+  <div class="wrap">
+    <h2>A fleet you can <span class="it">hear</span> working.</h2>
+    <div class="note">Hong Kong · Built security-first · The art of the possible</div>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="word">Typhoon<span class="a">Fleet</span></div>
+    <div class="mono">typhoonfleet.com · An agentic fleet</div>
+    <div class="mono">© 2026</div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // ----- roster (only what actually runs) -----
+  const AGENTS = [
+    {id:'life', name:'LifeOS', domain:'Life', status:'live', model:'any', autonomy:75,
+     what:'Captures anything you throw at it, routes it by understanding, and keeps the six dimensions of your life in view. Journal, tasks, recall, the morning card. Your life’s operating system.',
+     pat:[1,0,1,0,1,0,1,1,1,0,1,0,1,0,1,1]},
+    {id:'fit',  name:'Fitness', domain:'Body', status:'live', model:'any', autonomy:55,
+     what:'Logs every workout, reconciles the numbers, reads a meal photo back as macros and supplements, and reads recovery and readiness to you each morning. The agent that knows your body.',
+     pat:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,1,0]},
+    {id:'ed',   name:'Wang Report Editor', domain:'Newsroom', status:'live', model:'any', autonomy:60,
+     what:'Runs a newsroom of correspondents, each with a fixed voice, drafting and editing columns to publication standard, on schedule. The agent that runs a publication.',
+     pat:[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0]},
+    {id:'red',  name:'The Red-Teamer', domain:'Security', status:'live', model:'any', autonomy:70, flag:true,
+     what:'Automated, scoped offensive testing. Maps attack paths, probes controls, and reports the way an auditor will accept. Security-first, so every agent on the board meets the bar.',
+     pat:[1,0,0,0,0,0,0,1,1,0,0,0,0,0,1,0]},
+    {id:'photo', name:'Photos', domain:'Life', status:'designed', model:'any', autonomy:35,
+     what:'Reads a day of photos, writes down what they were, and turns the ones worth keeping into a page of the journal. Built to be shared, not just kept.',
+     pat:[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0]},
+  ];
+  const EMPTY_SLOTS = 3;       // pads left open on the board
+  const EMPTY_TRACKS = 1;      // empty sequencer lanes
+  const STATUS_LABEL = {live:'Live', designed:'Designed', planned:'Planned'};
+
+  // ----- sequencer rows -----
+  const seqRows = document.getElementById('seqRows');
+  AGENTS.forEach(a=>{
+    const row = document.createElement('div');
+    row.className='track'; row.dataset.id=a.id;
+    const nm = document.createElement('div'); nm.className='name'; nm.textContent=a.name;
+    const steps = document.createElement('div'); steps.className='steps';
+    a.pat.forEach(on=>{
+      const c=document.createElement('div'); c.className='cell'+(on?' on':''); steps.appendChild(c);
+    });
+    row.appendChild(nm); row.appendChild(steps); seqRows.appendChild(row);
+  });
+  // empty lanes — room to grow
+  for(let e=0;e<EMPTY_TRACKS;e++){
+    const row=document.createElement('div'); row.className='track empty';
+    const nm=document.createElement('div'); nm.className='name'; nm.textContent='open lane';
+    const steps=document.createElement('div'); steps.className='steps';
+    for(let i=0;i<16;i++){const c=document.createElement('div');c.className='cell';steps.appendChild(c);}
+    row.appendChild(nm); row.appendChild(steps); seqRows.appendChild(row);
+  }
+  const allRows = [...seqRows.querySelectorAll('.track:not(.empty)')];
+  const playRows = [...seqRows.querySelectorAll('.track')];
+
+  // playhead
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let step=0;
+  function tick(){
+    playRows.forEach(r=>{
+      const cells=r.querySelectorAll('.cell');
+      cells.forEach((c,i)=>c.classList.toggle('now', i===step));
+    });
+    step=(step+1)%16;
+  }
+  tick();
+  if(!reduce) setInterval(tick, 165);
+
+  // ----- pad bank -----
+  const padGrid = document.getElementById('padGrid');
+  AGENTS.forEach((a,idx)=>{
+    const p=document.createElement('div'); p.className='pad'; p.dataset.id=a.id;
+    p.innerHTML = `<span class="pdot ${a.status}"></span>${a.flag?'<span class="flag">Flag</span>':''}<span class="bank-i">${a.domain}</span><span class="pn">${a.name}</span>`;
+    p.addEventListener('click',()=>select(a.id,true));
+    padGrid.appendChild(p);
+  });
+  // empty pads — room to grow
+  for(let e=0;e<EMPTY_SLOTS;e++){
+    const p=document.createElement('div'); p.className='pad empty';
+    p.innerHTML = `<span class="slot">+ open</span>`;
+    padGrid.appendChild(p);
+  }
+
+  // ----- detail readout -----
+  const detail = document.getElementById('detail');
+  function select(id, hit){
+    const a = AGENTS.find(x=>x.id===id);
+    detail.innerHTML = `
+      <div class="bank">${a.domain}${a.flag?' · Flagship':''}</div>
+      <h3>${a.name} <span class="sd ${a.status}"></span></h3>
+      <div class="what">${a.what}</div>
+      <div class="specs">
+        <div class="srow"><span class="k">Status</span><span class="v">${STATUS_LABEL[a.status]}</span></div>
+        <div class="srow"><span class="k">Model</span><span class="v">Bring your own</span></div>
+        <div class="srow"><span class="k">Autonomy</span>
+          <span class="fader">
+            <span class="ends">Advise</span>
+            <span class="ftrack"><span class="fknob" style="left:${a.autonomy}%"></span></span>
+            <span class="ends">Act</span>
+          </span>
+        </div>
+      </div>`;
+    document.querySelectorAll('.pad').forEach(p=>p.classList.toggle('active', p.dataset.id===id));
+    allRows.forEach(r=>r.classList.toggle('sel', r.dataset.id===id));
+    if(hit){
+      const pad=document.querySelector(`.pad[data-id="${id}"]`);
+      pad.classList.add('hit'); setTimeout(()=>pad.classList.remove('hit'),140);
+    }
+  }
+  select('life', false); // load the life OS first
+
+  // ----- showcase voices -----
+  const voices = document.getElementById('voices');
+  AGENTS.forEach(a=>{
+    const v=document.createElement('div'); v.className='voice';
+    v.innerHTML = `
+      <div class="vbank">${a.domain}${a.flag?' · Flagship':''}</div>
+      <div class="vmain">
+        <h3>${a.name} <span class="sd ${a.status}"></span></h3>
+        <p>${a.what}</p>
+      </div>
+      <div class="vstat ${a.status==='live'?'live':''}">${STATUS_LABEL[a.status]}</div>`;
+    v.addEventListener('click',()=>{ select(a.id,true); document.getElementById('machine').scrollIntoView({behavior:'smooth'}); });
+    v.style.cursor='pointer';
+    voices.appendChild(v);
+  });
+})();
+</script>
+
+</body>
+</html>
