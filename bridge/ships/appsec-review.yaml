@@ -1,0 +1,28 @@
+# Ship manifest (dock protocol item 1, target-state-v3 §3.3)
+id: appsec-review
+name: Application security review
+squadron: security
+commodore: squall
+capability: S1
+status: live                     # first run by hand 2026-09-20; through the runtime 2026-09-21
+what: "Is this code and its deployment safe to ship: secrets in history, dependency CVEs, static analysis, insecure defaults, response headers with a CSP smoke, bundle host literals, browser egress + storage inventory, OAuth literals, engine adversarial harness, account posture."
+inputs: [authorization file (scoped), profile file, repo path, live URLs]
+outputs: [report markdown under cyber-agent/reports/, raw evidence, decision-log row, Console index]
+autonomy_tier: L1                 # enrich and recommend; read-only against the target
+rule0: true                       # scoped authorization naming repo + every hostname
+requires_approval: false          # L1: no active step
+model_routing: {classify: none, execute: none, review: fable}   # runtime is deterministic; triage is the orchestrator's
+tools: {trufflehog: brew, gitleaks: brew, osv-scanner: brew, semgrep: brew, playwright: "bundled with @playwright/mcp", gh: brew, mitmproxy: brew}
+npm: false
+triggers: [appsec, application security, security review, safe to ship, pass a, headers, csp, egress, oauth, eidos review]
+dispatch:
+  command: ["/Users/harrywang/dev/projects/cyber-agent/bin/squall", "run", "appsec-review", "--authorization", "{authorization}", "--profile", "{profile}", "--source", "bridge", "--operator", "bridge"]
+  requires: [authorization, profile]
+  cwd: /Users/harrywang/dev/projects/cyber-agent
+decision_log: /Users/harrywang/dev/projects/cyber-agent/state/intake.sqlite
+report_dir: /Users/harrywang/dev/projects/cyber-agent/reports
+console: {page: squall-reports}
+registry: "projects: cyber-agent (on demand; nightly sibling is code-vuln-audit)"
+budget: {llm_calls: 0, max_minutes: 10}
+method_page: https://typhoonfleet.com/method/appsec-review.html
+skill: /Users/harrywang/dev/projects/cyber-agent/skills/appsec-review/SKILL.md

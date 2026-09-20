@@ -1,3 +1,7 @@
 *.bak
 preview*.png
 .DS_Store
+bridge/.venv/
+bridge/botlib
+bridge/state/
+__pycache__/

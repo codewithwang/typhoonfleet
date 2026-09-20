@@ -1,0 +1,26 @@
+id: code-vuln-audit
+name: Code vulnerability audit
+squadron: security
+commodore: squall
+capability: S1
+status: live
+what: "Repo-only pass: secrets in git history (trufflehog + gitleaks), dependency CVEs (osv-scanner), static analysis (semgrep), insecure-default grep. Nightly on Harry's active repos; on demand for any repo named in an authorization."
+inputs: [authorization file (self-attest), profile file or --repo]
+outputs: [report markdown under cyber-agent/reports/ (only when the fingerprint changed), decision-log row, Console heartbeat]
+autonomy_tier: L1
+rule0: true                       # self-attest tier: the file names the repo path; no network target
+requires_approval: false
+model_routing: {classify: none, execute: none, review: fable}
+tools: {trufflehog: brew, gitleaks: brew, osv-scanner: brew, semgrep: brew}
+npm: false
+triggers: [vuln audit, audit repo, vulnerabilities, secrets scan, dependency cves, sast, nightly audit, code audit]
+dispatch:
+  command: ["/Users/harrywang/dev/projects/cyber-agent/bin/squall", "run", "code-vuln-audit", "--authorization", "{authorization}", "--profile", "{profile}", "--source", "bridge", "--operator", "bridge"]
+  requires: [authorization, profile]
+  cwd: /Users/harrywang/dev/projects/cyber-agent
+decision_log: /Users/harrywang/dev/projects/cyber-agent/state/intake.sqlite
+report_dir: /Users/harrywang/dev/projects/cyber-agent/reports
+console: {page: squall-reports, job: squall_nightly_audit}
+registry: com.harrywang.squall.nightlyaudit
+budget: {llm_calls: 0, max_minutes: 15}
+skill: /Users/harrywang/dev/projects/cyber-agent/skills/code-vuln-audit/SKILL.md
