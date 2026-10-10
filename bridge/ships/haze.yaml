@@ -1,0 +1,26 @@
+id: haze
+name: Haze
+squadron: security
+commodore: squall
+capability: privacy-masking
+status: live                      # first run 2026-10-03: WorkBrain email labelling cards for Laya
+what: "Masking layer: turns sensitive records into tokenised (stable <Client-A>/<Vendor-1>/<Org-1>), leak-checked, public-key-sealed cards so they can leave the device holding the real data. Rules first, local model only to find unknown names, rules-only leak gate, crypto-shred kill switch."
+inputs: [records on the source device (first adapter: WorkBrain cockpit label_items.jsonl on the work laptop)]
+outputs: [sealed batches (WorkBrain cockpit/loop/results/haze/), decrypted cards in ~/.haze on the Mac, labels back to the source as {cid: labels}]
+autonomy_tier: L1
+rule0: false                      # no target is touched; masks data the estate already holds
+requires_approval: false
+model_routing: {classify: none, execute: "local ollama qwen2.5:3b (find unknown names, source device only)", review: none}
+tools: {python3: "uv + cryptography (Mac); Laya venv + cryptography (laptop)", sqlite: native}
+npm: false
+triggers: [haze, mask, obfuscate, anonymise, pseudonymise, tokenise client names]
+dispatch:
+  command: ["uv", "run", "--quiet", "--with", "cryptography", "python", "/Users/harrywang/dev/WorkBrain/cockpit/haze/mac.py", "status"]
+  requires: []
+  cwd: /Users/harrywang/dev/WorkBrain
+decision_log: none
+report_dir: /Users/harrywang/dev/WorkBrain/cockpit/loop/results/haze
+console: {page: none, job: none}
+registry: none
+budget: {llm_calls: 0, max_minutes: 5}
+notes: "Code lives in WorkBrain cockpit/haze/ because the work laptop's only code channel is that repo; extract to its own package once a second adapter exists. Kill: mac.py kill (deletes Keychain key haze-workbrain = crypto-shred). Productising decision deferred until it has proved itself on WorkBrain."
